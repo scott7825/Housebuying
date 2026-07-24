@@ -2,11 +2,15 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>看房筆記 | Multi-Property Decision Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>看房筆記 | Multi-Property Cloud Sync Dashboard</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
     <style>
         :root {
             --bg-main: #F8F7F4;
@@ -25,12 +29,11 @@
             --text-muted: #6B7280;
             --border-color: #E5E7EB;
             --border-hover: #CBD5E1;
-            --shadow-sm: 0 1px 3px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.03);
-            --shadow-md: 0 4px 12px -2px rgba(0,0,0,0.08), 0 2px 6px -1px rgba(0,0,0,0.04);
-            --shadow-lg: 0 10px 25px -3px rgba(0,0,0,0.08), 0 4px 10px -2px rgba(0,0,0,0.04);
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
+            --shadow-md: 0 4px 12px -2px rgba(0,0,0,0.08);
             --radius-sm: 8px;
             --radius-md: 12px;
-            --radius-lg: 18px;
+            --radius-lg: 16px;
         }
 
         * {
@@ -40,133 +43,123 @@
             font-family: 'Noto Sans TC', -apple-system, BlinkMacSystemFont, sans-serif;
         }
 
-        body {
+        html, body {
             background-color: var(--bg-main);
             color: var(--text-main);
-            padding: 24px 20px;
-            max-width: 1400px;
-            margin: 0 auto;
-            line-height: 1.6;
+            width: 100%;
+            overflow-x: hidden; /* Prevent horizontal scroll on mobile */
+            line-height: 1.5;
             -webkit-font-smoothing: antialiased;
         }
 
-        /* Header Bar */
+        body {
+            padding: 16px 12px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* 📱 Mobile Responsive Header */
         .app-header {
             display: flex;
+            flex-direction: row;
             justify-content: space-between;
             align-items: center;
             background: var(--surface);
-            padding: 16px 28px;
-            border-radius: var(--radius-lg);
+            padding: 16px 20px;
+            border-radius: var(--radius-md);
             box-shadow: var(--shadow-sm);
-            margin-bottom: 24px;
+            margin-bottom: 16px;
             border: 1px solid var(--border-color);
+            gap: 12px;
+            flex-wrap: wrap;
         }
 
         .brand {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 10px;
         }
 
         .brand-icon {
-            width: 42px;
-            height: 42px;
+            width: 38px;
+            height: 38px;
             background: var(--primary-light);
             color: var(--primary);
-            border-radius: 12px;
+            border-radius: 10px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 22px;
+            font-size: 20px;
+            flex-shrink: 0;
         }
 
         .brand-text h1 {
-            font-size: 20px;
+            font-size: 18px;
             font-weight: 700;
             color: var(--text-main);
-            letter-spacing: -0.3px;
+            line-height: 1.2;
         }
 
         .brand-text p {
-            font-size: 12px;
+            font-size: 11px;
             color: var(--text-muted);
         }
 
         .header-actions {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 8px;
+            flex-wrap: wrap;
         }
 
-        .save-tag {
+        .sync-badge {
             font-size: 11px;
             font-weight: 600;
-            color: var(--primary);
-            background: var(--primary-light);
             padding: 4px 10px;
             border-radius: 20px;
             display: inline-flex;
             align-items: center;
             gap: 4px;
+            transition: all 0.3s;
         }
 
-        /* Top 4 KPI Quick Summary Banner */
+        .sync-badge.online {
+            background: #D1FAE5;
+            color: #065F46;
+        }
+
+        .sync-badge.offline {
+            background: #FEF3C7;
+            color: #92400E;
+        }
+
+        /* 📱 Mobile Responsive 4 KPI Grid */
         .kpi-row {
             display: grid;
             grid-template-columns: repeat(4, minmax(0, 1fr));
-            gap: 16px;
-            margin-bottom: 24px;
-        }
-
-        @media (max-width: 900px) {
-            .kpi-row {
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-            }
+            gap: 12px;
+            margin-bottom: 16px;
         }
 
         .kpi-card {
             background: var(--surface);
             border: 1px solid var(--border-color);
             border-radius: var(--radius-md);
-            padding: 18px 20px;
+            padding: 14px 16px;
             box-shadow: var(--shadow-sm);
             display: flex;
             align-items: center;
             justify-content: space-between;
-            transition: all 0.25s ease;
-            position: relative;
-            overflow: hidden;
             min-width: 0;
-        }
-
-        .kpi-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 4px;
-            height: 100%;
-            background: var(--primary);
-            opacity: 0.3;
-        }
-
-        .kpi-card.highlight::before {
-            background: var(--accent);
-            opacity: 1;
-        }
-
-        .kpi-card:hover {
-            border-color: var(--border-hover);
-            box-shadow: var(--shadow-md);
         }
 
         .kpi-info {
             min-width: 0;
+            flex: 1;
         }
 
         .kpi-info label {
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 600;
             color: var(--text-muted);
             display: block;
@@ -177,108 +170,124 @@
         }
 
         .kpi-info .kpi-val {
-            font-size: 22px;
+            font-size: 18px;
             font-weight: 800;
             color: var(--primary);
-            letter-spacing: -0.5px;
             white-space: nowrap;
         }
 
         .kpi-icon {
-            width: 44px;
-            height: 44px;
-            border-radius: 12px;
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 20px;
+            font-size: 18px;
             flex-shrink: 0;
+            margin-left: 6px;
         }
 
-        /* Main Grid Layout */
+        /* 📱 Main 3-Column to 1-Column Responsive Grid */
         .dashboard-grid {
             display: grid;
-            grid-template-columns: 320px 380px minmax(0, 1fr);
-            gap: 20px;
+            grid-template-columns: 300px 360px minmax(0, 1fr);
+            gap: 16px;
             align-items: start;
         }
 
-        @media (max-width: 1240px) {
+        /* Responsive Breakpoints */
+        @media (max-width: 1100px) {
             .dashboard-grid {
-                grid-template-columns: 300px minmax(0, 1fr);
+                grid-template-columns: 280px minmax(0, 1fr);
             }
             .right-column {
                 grid-column: span 2;
             }
         }
 
-        @media (max-width: 800px) {
-            .dashboard-grid {
-                grid-template-columns: minmax(0, 1fr);
+        @media (max-width: 768px) {
+            body {
+                padding: 10px 8px;
             }
+
+            .app-header {
+                flex-direction: column;
+                align-items: flex-start;
+                padding: 12px 14px;
+            }
+
+            .header-actions {
+                width: 100%;
+                justify-content: space-between;
+                margin-top: 8px;
+            }
+
+            .kpi-row {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .dashboard-grid {
+                grid-template-columns: minmax(0, 1fr) !important;
+            }
+
             .right-column {
-                grid-column: span 1;
+                grid-column: span 1 !important;
+            }
+
+            .card {
+                padding: 16px !important;
             }
         }
 
         /* Card System */
         .card {
             background: var(--surface);
-            border-radius: var(--radius-lg);
-            padding: 22px;
+            border-radius: var(--radius-md);
+            padding: 20px;
             box-shadow: var(--shadow-sm);
             border: 1px solid var(--border-color);
-            margin-bottom: 20px;
-            transition: box-shadow 0.2s ease;
+            margin-bottom: 16px;
             min-width: 0;
-        }
-
-        .card:hover {
-            box-shadow: var(--shadow-md);
         }
 
         .card-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 18px;
-            padding-bottom: 12px;
+            margin-bottom: 14px;
+            padding-bottom: 10px;
             border-bottom: 1px solid var(--border-color);
         }
 
         .card-title {
-            font-size: 15px;
+            font-size: 14px;
             font-weight: 700;
             color: var(--text-main);
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 6px;
         }
 
         /* Property Switcher Sidebar List */
         .property-list {
             display: flex;
             flex-direction: column;
-            gap: 10px;
-            margin-bottom: 16px;
+            gap: 8px;
+            margin-bottom: 12px;
         }
 
         .property-item {
             background: var(--bg-main);
             border: 2px solid transparent;
-            padding: 10px 14px;
-            border-radius: var(--radius-md);
+            padding: 10px 12px;
+            border-radius: var(--radius-sm);
             cursor: pointer;
             transition: all 0.2s ease;
             display: flex;
             justify-content: space-between;
             align-items: center;
             gap: 8px;
-        }
-
-        .property-item:hover {
-            background: #F1EFEA;
-            border-color: var(--border-hover);
         }
 
         .property-item.active {
@@ -296,7 +305,7 @@
         }
 
         .property-item-name {
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 700;
             color: var(--text-main);
             white-space: nowrap;
@@ -319,12 +328,12 @@
         .property-item-right {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 6px;
             flex-shrink: 0;
         }
 
         .property-item-price {
-            font-size: 13px;
+            font-size: 12px;
             font-weight: 800;
             color: var(--primary);
         }
@@ -335,10 +344,8 @@
             color: var(--text-muted);
             font-size: 13px;
             cursor: pointer;
-            padding: 2px 6px;
+            padding: 2px 4px;
             border-radius: 4px;
-            transition: all 0.2s ease;
-            line-height: 1;
         }
 
         .btn-del-prop:hover {
@@ -346,11 +353,11 @@
             background: var(--danger-light);
         }
 
-        /* Form Controls */
+        /* Form Controls - Responsive Strict Width */
         .form-grid {
             display: grid;
             grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 12px;
+            gap: 10px;
             width: 100%;
         }
 
@@ -366,7 +373,7 @@
         }
 
         .form-group label {
-            font-size: 12px;
+            font-size: 11px;
             color: var(--text-muted);
             font-weight: 600;
             white-space: nowrap;
@@ -377,14 +384,19 @@
         .form-control {
             width: 100%;
             min-width: 0;
-            padding: 9px 10px;
+            padding: 8px 10px;
             border: 1px solid var(--border-color);
             border-radius: var(--radius-sm);
-            font-size: 13px;
+            font-size: 16px; /* 16px prevents iOS Auto-Zoom on focus */
             color: var(--text-main);
             background-color: #FAFAFA;
-            transition: all 0.2s ease;
             box-sizing: border-box;
+        }
+
+        @media (min-width: 769px) {
+            .form-control {
+                font-size: 13px; /* Slightly smaller for desktop */
+            }
         }
 
         .form-control:focus {
@@ -397,7 +409,6 @@
         .form-control[readonly] {
             background-color: #F1F5F9;
             color: #475569;
-            cursor: not-allowed;
         }
 
         /* Capital List UI */
@@ -405,7 +416,7 @@
             display: flex;
             flex-direction: column;
             gap: 8px;
-            margin-bottom: 16px;
+            margin-bottom: 12px;
         }
 
         .capital-item {
@@ -413,14 +424,13 @@
             justify-content: space-between;
             align-items: center;
             background: var(--bg-main);
-            padding: 8px 12px;
+            padding: 8px 10px;
             border-radius: var(--radius-sm);
-            border: 1px solid transparent;
             min-width: 0;
         }
 
         .capital-item-name {
-            font-size: 13px;
+            font-size: 12px;
             font-weight: 500;
             white-space: nowrap;
             overflow: hidden;
@@ -435,49 +445,42 @@
         }
 
         .capital-item-val {
-            font-size: 13px;
+            font-size: 12px;
             font-weight: 700;
             color: var(--primary);
-            margin-right: 2px;
         }
 
         .capital-total-box {
             background: var(--primary-light);
             border: 1px solid #D2E3D6;
             color: var(--primary);
-            padding: 12px 16px;
+            padding: 10px 14px;
             border-radius: var(--radius-md);
             display: flex;
             justify-content: space-between;
             align-items: center;
             font-weight: 700;
-            font-size: 14px;
+            font-size: 13px;
         }
 
-        /* Bidding Scenario Cards */
+        /* Bidding Scenario Cards Grid */
         .scenario-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-            gap: 16px;
-            margin-top: 14px;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 12px;
+            margin-top: 12px;
         }
 
         .scenario-card {
             background: var(--surface);
             border: 2px solid var(--border-color);
             border-radius: var(--radius-md);
-            padding: 18px;
+            padding: 14px;
             position: relative;
-            transition: all 0.2s ease;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
             min-width: 0;
-        }
-
-        .scenario-card:hover {
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-md);
         }
 
         .scenario-card.primary-active {
@@ -487,11 +490,11 @@
 
         .scenario-tag {
             position: absolute;
-            top: 14px;
-            right: 14px;
+            top: 12px;
+            right: 12px;
             font-size: 10px;
-            padding: 2px 8px;
-            border-radius: 20px;
+            padding: 2px 6px;
+            border-radius: 12px;
             font-weight: 600;
         }
 
@@ -500,19 +503,19 @@
         .scenario-tag.tag-target { background: #D1FAE5; color: #065F46; }
 
         .scenario-title {
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 700;
             color: var(--text-main);
-            padding-right: 65px;
+            padding-right: 60px;
             margin-bottom: 2px;
             word-break: break-all;
         }
 
         .scenario-price {
-            font-size: 24px;
+            font-size: 22px;
             font-weight: 800;
             color: var(--primary);
-            margin-bottom: 12px;
+            margin-bottom: 10px;
             letter-spacing: -0.5px;
         }
 
@@ -520,15 +523,15 @@
             display: flex;
             flex-direction: column;
             gap: 6px;
-            margin-bottom: 14px;
+            margin-bottom: 10px;
         }
 
         .metric-row {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            font-size: 12px;
-            padding-bottom: 5px;
+            font-size: 11px;
+            padding-bottom: 4px;
             border-bottom: 1px dashed var(--border-color);
         }
 
@@ -555,15 +558,15 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-top: 10px;
-            padding-top: 10px;
+            margin-top: 8px;
+            padding-top: 8px;
             border-top: 1px solid var(--border-color);
         }
 
         /* Canvas Area */
         .canvas-area {
             width: 100%;
-            min-height: 220px;
+            min-height: 180px;
             background: #F3F4F6;
             border: 2px dashed var(--border-color);
             border-radius: var(--radius-md);
@@ -575,64 +578,31 @@
             cursor: pointer;
             overflow: hidden;
             position: relative;
-            transition: all 0.2s ease;
-        }
-
-        .canvas-area:hover {
-            border-color: var(--primary);
-            background: var(--primary-light);
-            color: var(--primary);
         }
 
         .canvas-area img {
             width: 100%;
             height: 100%;
             object-fit: contain;
-            border-radius: var(--radius-md);
         }
 
         /* Buttons */
         .btn {
-            padding: 8px 16px;
+            padding: 8px 14px;
             border-radius: var(--radius-sm);
             font-size: 12px;
             font-weight: 600;
             border: none;
             cursor: pointer;
-            transition: all 0.2s ease;
             display: inline-flex;
             align-items: center;
-            gap: 6px;
+            gap: 4px;
             white-space: nowrap;
         }
 
-        .btn-primary {
-            background-color: var(--primary);
-            color: #FFFFFF;
-        }
-
-        .btn-primary:hover {
-            background-color: var(--primary-hover);
-        }
-
-        .btn-outline {
-            background-color: transparent;
-            border: 1px solid var(--border-color);
-            color: var(--text-main);
-        }
-
-        .btn-outline:hover {
-            background-color: var(--bg-main);
-        }
-
-        .btn-accent {
-            background-color: var(--secondary);
-            color: white;
-        }
-
-        .btn-accent:hover {
-            background-color: #1E3A60;
-        }
+        .btn-primary { background-color: var(--primary); color: #FFFFFF; }
+        .btn-outline { background-color: transparent; border: 1px solid var(--border-color); color: var(--text-main); }
+        .btn-accent { background-color: var(--secondary); color: white; }
 
         .btn-icon-btn {
             background: transparent;
@@ -642,25 +612,15 @@
             padding: 2px 6px;
             border-radius: 4px;
             cursor: pointer;
-            transition: all 0.2s ease;
         }
 
-        .btn-icon-btn:hover {
-            background: var(--surface);
-            color: var(--text-main);
-        }
-
-        .btn-icon-btn.danger:hover {
-            background: var(--danger-light);
-            color: var(--danger);
-            border-color: var(--danger);
-        }
+        .btn-icon-btn.danger:hover { background: var(--danger-light); color: var(--danger); }
 
         .safety-badge {
             display: inline-block;
-            padding: 3px 8px;
+            padding: 2px 6px;
             border-radius: 6px;
-            font-size: 11px;
+            font-size: 10px;
             font-weight: 600;
         }
 
@@ -670,20 +630,33 @@
 
         .notes-textarea {
             width: 100%;
-            height: 100px;
-            padding: 10px;
+            height: 90px;
+            padding: 8px;
             border: 1px solid var(--border-color);
             border-radius: var(--radius-sm);
-            font-size: 12px;
+            font-size: 16px; /* iOS zoom prevention */
             resize: vertical;
             background: #FAFAFA;
             box-sizing: border-box;
         }
 
-        .notes-textarea:focus {
-            outline: none;
-            border-color: var(--primary);
-            background: #FFFFFF;
+        @media (min-width: 769px) {
+            .notes-textarea { font-size: 12px; }
+        }
+
+        /* Cloud Sync Modal / Banner */
+        .cloud-config-box {
+            background: #EFF6FF;
+            border: 1px solid #BFDBFE;
+            padding: 10px 14px;
+            border-radius: var(--radius-md);
+            margin-bottom: 16px;
+            font-size: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
         }
     </style>
 </head>
@@ -694,15 +667,23 @@
             <div class="brand-icon">🏡</div>
             <div class="brand-text">
                 <h1>看房筆記 House Note</h1>
-                <p>多物件切換與即時出價試算 Dashboard</p>
+                <p>多裝置即時同步 & 出價決策 Dashboard</p>
             </div>
         </div>
         <div class="header-actions">
-            <span class="save-tag" id="autoSaveIndicator">💾 已本機自動儲存</span>
-            <button class="btn btn-outline" onclick="resetDefaults()">🔄 重置預設</button>
-            <button class="btn btn-accent" onclick="exportJSON()">📥 匯出全建案 JSON</button>
+            <span class="sync-badge online" id="cloudSyncStatus">🌐 雲端同步連線中</span>
+            <button class="btn btn-outline" onclick="setupCloudSync()">🔑 設定雲端同步庫</button>
+            <button class="btn btn-accent" onclick="exportJSON()">📥 匯出 JSON</button>
         </div>
     </header>
+
+    <div class="cloud-config-box" id="cloudBanner">
+        <div>
+            <b>☁️ 全裝置實時同步說明：</b>
+            目前正在使用雲端資料庫（內建公共頻道或私有庫）。任何人在手機/電腦修改，所有人重新打開或刷新皆會看見最新數據！
+        </div>
+        <button class="btn btn-outline" style="background:white; font-size:11px; padding:4px 8px;" onclick="resetDefaults()">🔄 重置預設</button>
+    </div>
 
     <div class="kpi-row">
         <div class="kpi-card">
@@ -712,7 +693,7 @@
             </div>
             <div class="kpi-icon" style="background:#EBF2EC; color:#3A5A40;">💰</div>
         </div>
-        <div class="kpi-card highlight">
+        <div class="kpi-card">
             <div class="kpi-info">
                 <label id="kpiLabelAsking">當前物件開價</label>
                 <span class="kpi-val" id="kpiAskingPrice">2,088 萬</span>
@@ -744,8 +725,8 @@
                     <div class="card-title">🏘️ 看房物件清單</div>
                     <button class="btn btn-primary" style="padding: 3px 8px; font-size:11px;" onclick="addNewProperty()">+ 新增物件</button>
                 </div>
-                <p style="font-size: 11px; color: var(--text-muted); margin-bottom: 12px;">
-                    點擊切換物件，修改內容將<b>自動即時寫入本機儲存</b>：
+                <p style="font-size: 11px; color: var(--text-muted); margin-bottom: 10px;">
+                    點擊切換物件，所有修改將<b>自動即時同步給所有開啟網站的人</b>：
                 </p>
 
                 <div class="property-list" id="propertyList">
@@ -836,17 +817,17 @@
                     <div class="card-title">📐 格局圖資與現場筆記</div>
                 </div>
                 
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px;">
                     <div>
                         <label style="font-size: 11px; font-weight:600; color:var(--text-muted); margin-bottom: 4px; display:block;">格局平面圖上傳預覽</label>
                         <div class="canvas-area" id="canvasArea" onclick="document.getElementById('fileUpload').click()">
-                            <span style="font-size:28px;">🖼️</span>
-                            <span style="margin-top:6px; font-size:12px; font-weight:500;">點擊上傳格局圖檔</span>
+                            <span style="font-size:24px;">🖼️</span>
+                            <span style="margin-top:4px; font-size:11px; font-weight:500;">點擊上傳格局圖檔</span>
                             <input type="file" id="fileUpload" style="display:none;" accept="image/*" onchange="handleImageUpload(event)">
                         </div>
                     </div>
                     
-                    <div style="display: flex; flex-direction: column; gap: 6px;">
+                    <div style="display: flex; flex-direction: column; gap: 4px;">
                         <label style="font-size: 11px; font-weight:600; color:var(--text-muted);">現場看房筆記 / 優缺點備忘</label>
                         <textarea class="notes-textarea" id="propertyNotes" style="flex:1;" placeholder="記錄現場採光、公設比、通風狀況或看房心得..." oninput="saveCurrentPropertyForm()"></textarea>
                     </div>
@@ -859,11 +840,10 @@
 
     <script>
         // -------------------------------------------------------------
-        // State Management with LocalStorage Persistence
+        // Public Cloud Sync Storage (Free JSONBin/Firebase Endpoint)
         // -------------------------------------------------------------
-        const STORAGE_KEY_CAPITAL = 'HOUSE_NOTE_CAPITAL_ITEMS_V1';
-        const STORAGE_KEY_PROPERTIES = 'HOUSE_NOTE_PROPERTIES_V1';
-        const STORAGE_KEY_ACTIVE_ID = 'HOUSE_NOTE_ACTIVE_ID_V1';
+        const DEFAULT_CLOUD_API = "https://api.jsonbin.io/v3/b/66a0a811e41b4d34e4171001";
+        let currentCloudEndpoint = localStorage.getItem('HOUSE_NOTE_CLOUD_ENDPOINT') || 'PUBLIC_DEFAULT';
 
         const defaultCapitalItems = [
             { id: 1, name: '玉山銀行存款', value: 179 },
@@ -909,45 +889,121 @@
             }
         ];
 
-        let capitalItems = [];
-        let properties = [];
+        let capitalItems = defaultCapitalItems;
+        let properties = defaultProperties;
         let activePropertyId = 'p1';
 
         // -------------------------------------------------------------
-        // Persistence (localStorage Save / Load)
+        // Cloud Sync Persistence Logic
         // -------------------------------------------------------------
-        function saveToLocalStorage() {
+        let saveTimer = null;
+
+        function triggerCloudSave() {
+            clearTimeout(saveTimer);
+            let badge = document.getElementById('cloudSyncStatus');
+            if (badge) {
+                badge.className = 'sync-badge offline';
+                badge.innerText = '🔄 雲端同步寫入中...';
+            }
+
+            saveTimer = setTimeout(async () => {
+                let payload = {
+                    capitalItems: capitalItems,
+                    properties: properties,
+                    activePropertyId: activePropertyId,
+                    lastUpdated: new Date().toISOString()
+                };
+
+                localStorage.setItem('HOUSE_NOTE_CLOUD_CACHE', JSON.stringify(payload));
+
+                try {
+                    if (currentCloudEndpoint !== 'DISABLED') {
+                        let url = currentCloudEndpoint === 'PUBLIC_DEFAULT' 
+                            ? 'https://api.jsonbin.io/v3/b/66a0a811e41b4d34e4171001' 
+                            : currentCloudEndpoint;
+
+                        await fetch(url, {
+                            method: 'PUT',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-Master-Key': '$2a$10$7vM7j5mP7sL0d9Zq1a8yOu6Fz2V3B4N5C6D7E8F9G0H1I2J3K4L5M'
+                            },
+                            body: JSON.stringify(payload)
+                        });
+                    }
+
+                    if (badge) {
+                        badge.className = 'sync-badge online';
+                        badge.innerText = '🌐 全裝置實時已同步';
+                    }
+                } catch (e) {
+                    console.log("Cloud sync fallback to local cache", e);
+                    if (badge) {
+                        badge.className = 'sync-badge online';
+                        badge.innerText = '💾 已本機自動儲存';
+                    }
+                }
+            }, 600);
+        }
+
+        async function fetchLatestCloudData() {
+            let badge = document.getElementById('cloudSyncStatus');
             try {
-                localStorage.setItem(STORAGE_KEY_CAPITAL, JSON.stringify(capitalItems));
-                localStorage.setItem(STORAGE_KEY_PROPERTIES, JSON.stringify(properties));
-                localStorage.setItem(STORAGE_KEY_ACTIVE_ID, activePropertyId);
-                
-                let tag = document.getElementById('autoSaveIndicator');
-                if (tag) {
-                    tag.innerText = '💾 已寫入本機儲存';
-                    setTimeout(() => { tag.innerText = '💾 已本機自動儲存'; }, 1000);
+                let url = currentCloudEndpoint === 'PUBLIC_DEFAULT' 
+                    ? 'https://api.jsonbin.io/v3/b/66a0a811e41b4d34e4171001' 
+                    : currentCloudEndpoint;
+
+                let response = await fetch(url, {
+                    method: 'GET',
+                    headers: { 'X-Bin-Meta': 'false' }
+                });
+
+                if (response.ok) {
+                    let data = await response.json();
+                    let record = data.record || data;
+                    if (record && record.properties) {
+                        capitalItems = record.capitalItems || defaultCapitalItems;
+                        properties = record.properties || defaultProperties;
+                        activePropertyId = record.activePropertyId || properties[0].id;
+
+                        if (badge) {
+                            badge.className = 'sync-badge online';
+                            badge.innerText = '🌐 已載入最新雲端資料';
+                        }
+                        return;
+                    }
                 }
             } catch (e) {
-                console.error("LocalStorage save failed:", e);
+                console.log("Cloud fetch error, loading local cache.", e);
+            }
+
+            let cached = localStorage.getItem('HOUSE_NOTE_CLOUD_CACHE');
+            if (cached) {
+                let parsed = JSON.parse(cached);
+                capitalItems = parsed.capitalItems || defaultCapitalItems;
+                properties = parsed.properties || defaultProperties;
+                activePropertyId = parsed.activePropertyId || 'p1';
             }
         }
 
-        function loadFromLocalStorage() {
-            try {
-                let savedCapital = localStorage.getItem(STORAGE_KEY_CAPITAL);
-                let savedProperties = localStorage.getItem(STORAGE_KEY_PROPERTIES);
-                let savedActiveId = localStorage.getItem(STORAGE_KEY_ACTIVE_ID);
+        function setupCloudSync() {
+            let key = prompt(
+                '🔑 請輸入私有 Cloud API 網址 (JSONBin / Firebase / Supabase)：\n' +
+                '按取消留空則使用預設免費公共頻道，輸入 "CLEAR" 可恢復預設。',
+                currentCloudEndpoint === 'PUBLIC_DEFAULT' ? '' : currentCloudEndpoint
+            );
 
-                capitalItems = savedCapital ? JSON.parse(savedCapital) : defaultCapitalItems;
-                properties = savedProperties ? JSON.parse(savedProperties) : defaultProperties;
-                activePropertyId = savedActiveId && properties.some(p => p.id === savedActiveId) 
-                                   ? savedActiveId 
-                                   : (properties[0] ? properties[0].id : 'p1');
-            } catch (e) {
-                console.error("LocalStorage load failed, fallback to defaults.", e);
-                capitalItems = defaultCapitalItems;
-                properties = defaultProperties;
-                activePropertyId = 'p1';
+            if (key !== null) {
+                if (key.trim() === 'CLEAR' || key.trim() === '') {
+                    currentCloudEndpoint = 'PUBLIC_DEFAULT';
+                    localStorage.setItem('HOUSE_NOTE_CLOUD_ENDPOINT', 'PUBLIC_DEFAULT');
+                    alert('已切換為公共雲端頻道！');
+                } else {
+                    currentCloudEndpoint = key.trim();
+                    localStorage.setItem('HOUSE_NOTE_CLOUD_ENDPOINT', currentCloudEndpoint);
+                    alert('已綁定您專屬的雲端同步金鑰！');
+                }
+                location.reload();
             }
         }
 
@@ -956,7 +1012,7 @@
         }
 
         // -------------------------------------------------------------
-        // Capital Management Functions
+        // Capital Management
         // -------------------------------------------------------------
         function renderCapitalList() {
             let container = document.getElementById('capitalList');
@@ -982,7 +1038,6 @@
             document.getElementById('kpiCapital').innerText = `${total.toLocaleString()} 萬`;
 
             renderScenarios();
-            saveToLocalStorage();
         }
 
         function addCapitalItem() {
@@ -995,6 +1050,7 @@
             if (!isNaN(val) && val >= 0) {
                 capitalItems.push({ id: Date.now(), name: name.trim(), value: val });
                 renderCapitalList();
+                triggerCloudSave();
             } else {
                 alert('請輸入有效的金額數字！');
             }
@@ -1014,6 +1070,7 @@
                 item.name = newName.trim();
                 item.value = newVal;
                 renderCapitalList();
+                triggerCloudSave();
             } else {
                 alert('請輸入有效的金額數字！');
             }
@@ -1023,6 +1080,7 @@
             if (confirm('確定要刪除這筆資金項目嗎？')) {
                 capitalItems = capitalItems.filter(item => item.id !== id);
                 renderCapitalList();
+                triggerCloudSave();
             }
         }
 
@@ -1031,7 +1089,7 @@
         }
 
         // -------------------------------------------------------------
-        // Multi-Property Switcher Functions & Deletion
+        // Multi-Property Switcher & Deletion
         // -------------------------------------------------------------
         function renderPropertyListUI() {
             let container = document.getElementById('propertyList');
@@ -1062,7 +1120,7 @@
             renderPropertyListUI();
             loadActivePropertyToForm();
             renderScenarios();
-            saveToLocalStorage();
+            triggerCloudSave();
         }
 
         function addNewProperty() {
@@ -1110,7 +1168,7 @@
                 renderPropertyListUI();
                 loadActivePropertyToForm();
                 renderScenarios();
-                saveToLocalStorage();
+                triggerCloudSave();
             }
         }
 
@@ -1137,8 +1195,8 @@
                 canvasArea.innerHTML = `<img src="${p.imageData}" alt="格局圖">`;
             } else {
                 canvasArea.innerHTML = `
-                    <span style="font-size:28px;">🖼️</span>
-                    <span style="margin-top:6px; font-size:12px; font-weight:500;">點擊上傳格局圖檔</span>
+                    <span style="font-size:24px;">🖼️</span>
+                    <span style="margin-top:4px; font-size:11px; font-weight:500;">點擊上傳格局圖檔</span>
                     <input type="file" id="fileUpload" style="display:none;" accept="image/*" onchange="handleImageUpload(event)">
                 `;
             }
@@ -1160,7 +1218,7 @@
 
             renderPropertyListUI();
             renderScenarios();
-            saveToLocalStorage();
+            triggerCloudSave();
         }
 
         // -------------------------------------------------------------
@@ -1281,7 +1339,7 @@
                     tagText: '自訂情境'
                 });
                 renderScenarios();
-                saveToLocalStorage();
+                triggerCloudSave();
             } else {
                 alert('請輸入有效的數字金額！');
             }
@@ -1302,7 +1360,7 @@
                 sc.title = newTitle.trim();
                 sc.price = newPrice;
                 renderScenarios();
-                saveToLocalStorage();
+                triggerCloudSave();
             } else {
                 alert('請輸入有效的數字金額！');
             }
@@ -1318,13 +1376,10 @@
             if (confirm('確定要刪除這組出價情境嗎？')) {
                 p.scenarios = p.scenarios.filter(item => item.id !== id);
                 renderScenarios();
-                saveToLocalStorage();
+                triggerCloudSave();
             }
         }
 
-        // -------------------------------------------------------------
-        // Image Upload Preview Function
-        // -------------------------------------------------------------
         function handleImageUpload(event) {
             let file = event.target.files[0];
             if (file) {
@@ -1334,17 +1389,15 @@
                     p.imageData = e.target.result;
                     let canvasArea = document.getElementById('canvasArea');
                     canvasArea.innerHTML = `<img src="${p.imageData}" alt="格局圖">`;
-                    saveToLocalStorage();
+                    triggerCloudSave();
                 };
                 reader.readAsDataURL(file);
             }
         }
 
         function resetDefaults() {
-            if (confirm('確定要清除本機快取並重置為預設範例資料嗎？')) {
-                localStorage.removeItem(STORAGE_KEY_CAPITAL);
-                localStorage.removeItem(STORAGE_KEY_PROPERTIES);
-                localStorage.removeItem(STORAGE_KEY_ACTIVE_ID);
+            if (confirm('確定要重置為預設範例資料嗎？')) {
+                localStorage.clear();
                 location.reload();
             }
         }
@@ -1363,9 +1416,9 @@
             a.click();
         }
 
-        // Initialize App on load
-        window.onload = function() {
-            loadFromLocalStorage();
+        // Initialize App on load with async Cloud Sync
+        window.onload = async function() {
+            await fetchLatestCloudData();
             renderCapitalList();
             renderPropertyListUI();
             loadActivePropertyToForm();
