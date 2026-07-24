@@ -1,0 +1,1323 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>看房筆記 | Multi-Property Decision Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-main: #F8F7F4;
+            --surface: #FFFFFF;
+            --surface-hover: #FAF9F6;
+            --primary: #3A5A40;
+            --primary-light: #EBF2EC;
+            --primary-hover: #2F4833;
+            --secondary: #2B4C7E;
+            --secondary-light: #EEF3FA;
+            --accent: #D97706;
+            --accent-light: #FEF3C7;
+            --danger: #DC2626;
+            --danger-light: #FEE2E2;
+            --text-main: #1F2937;
+            --text-muted: #6B7280;
+            --border-color: #E5E7EB;
+            --border-hover: #CBD5E1;
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.03);
+            --shadow-md: 0 4px 12px -2px rgba(0,0,0,0.08), 0 2px 6px -1px rgba(0,0,0,0.04);
+            --shadow-lg: 0 10px 25px -3px rgba(0,0,0,0.08), 0 4px 10px -2px rgba(0,0,0,0.04);
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 18px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Noto Sans TC', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            padding: 24px 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* Header Bar */
+        .app-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--surface);
+            padding: 16px 28px;
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-sm);
+            margin-bottom: 24px;
+            border: 1px solid var(--border-color);
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .brand-icon {
+            width: 42px;
+            height: 42px;
+            background: var(--primary-light);
+            color: var(--primary);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+        }
+
+        .brand-text h1 {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text-main);
+            letter-spacing: -0.3px;
+        }
+
+        .brand-text p {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        /* Top 4 KPI Quick Summary Banner */
+        .kpi-row {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        @media (max-width: 900px) {
+            .kpi-row {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        .kpi-card {
+            background: var(--surface);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 18px 20px;
+            box-shadow: var(--shadow-sm);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: all 0.25s ease;
+            position: relative;
+            overflow: hidden;
+            min-width: 0;
+        }
+
+        .kpi-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: var(--primary);
+            opacity: 0.3;
+        }
+
+        .kpi-card.highlight::before {
+            background: var(--accent);
+            opacity: 1;
+        }
+
+        .kpi-card:hover {
+            border-color: var(--border-hover);
+            box-shadow: var(--shadow-md);
+        }
+
+        .kpi-info {
+            min-width: 0;
+        }
+
+        .kpi-info label {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-muted);
+            display: block;
+            margin-bottom: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .kpi-info .kpi-val {
+            font-size: 22px;
+            font-weight: 800;
+            color: var(--primary);
+            letter-spacing: -0.5px;
+            white-space: nowrap;
+        }
+
+        .kpi-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+
+        /* Main Grid Layout - Fixed width constraint & layout overflow bug */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 320px 380px minmax(0, 1fr);
+            gap: 20px;
+            align-items: start;
+        }
+
+        @media (max-width: 1240px) {
+            .dashboard-grid {
+                grid-template-columns: 300px minmax(0, 1fr);
+            }
+            .right-column {
+                grid-column: span 2;
+            }
+        }
+
+        @media (max-width: 800px) {
+            .dashboard-grid {
+                grid-template-columns: minmax(0, 1fr);
+            }
+            .right-column {
+                grid-column: span 1;
+            }
+        }
+
+        /* Card System */
+        .card {
+            background: var(--surface);
+            border-radius: var(--radius-lg);
+            padding: 22px;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border-color);
+            margin-bottom: 20px;
+            transition: box-shadow 0.2s ease;
+            min-width: 0;
+        }
+
+        .card:hover {
+            box-shadow: var(--shadow-md);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 18px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .card-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Property Switcher Sidebar List */
+        .property-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+
+        .property-item {
+            background: var(--bg-main);
+            border: 2px solid transparent;
+            padding: 10px 14px;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .property-item:hover {
+            background: #F1EFEA;
+            border-color: var(--border-hover);
+        }
+
+        .property-item.active {
+            background: #FAFDFB;
+            border-color: var(--primary);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .property-item-info {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            min-width: 0;
+            flex: 1;
+        }
+
+        .property-item-name {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--text-main);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .property-item.active .property-item-name {
+            color: var(--primary);
+        }
+
+        .property-item-addr {
+            font-size: 11px;
+            color: var(--text-muted);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .property-item-right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+
+        .property-item-price {
+            font-size: 13px;
+            font-weight: 800;
+            color: var(--primary);
+        }
+
+        .btn-del-prop {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            font-size: 13px;
+            cursor: pointer;
+            padding: 2px 6px;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+            line-height: 1;
+        }
+
+        .btn-del-prop:hover {
+            color: var(--danger);
+            background: var(--danger-light);
+        }
+
+        /* Form Controls - STRICT GRID WIDTH FIX */
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+            width: 100%;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            min-width: 0;
+        }
+
+        .form-group.full-width {
+            grid-column: span 2;
+        }
+
+        .form-group label {
+            font-size: 12px;
+            color: var(--text-muted);
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .form-control {
+            width: 100%;
+            min-width: 0;
+            padding: 9px 10px;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            font-size: 13px;
+            color: var(--text-main);
+            background-color: #FAFAFA;
+            transition: all 0.2s ease;
+            box-sizing: border-box;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary);
+            background-color: #FFFFFF;
+            box-shadow: 0 0 0 3px var(--primary-light);
+        }
+
+        .form-control[readonly] {
+            background-color: #F1F5F9;
+            color: #475569;
+            cursor: not-allowed;
+        }
+
+        /* Capital List UI */
+        .capital-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .capital-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--bg-main);
+            padding: 8px 12px;
+            border-radius: var(--radius-sm);
+            border: 1px solid transparent;
+            min-width: 0;
+        }
+
+        .capital-item-name {
+            font-size: 13px;
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .capital-item-right {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-shrink: 0;
+        }
+
+        .capital-item-val {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--primary);
+            margin-right: 2px;
+        }
+
+        .capital-total-box {
+            background: var(--primary-light);
+            border: 1px solid #D2E3D6;
+            color: var(--primary);
+            padding: 12px 16px;
+            border-radius: var(--radius-md);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 700;
+            font-size: 14px;
+        }
+
+        /* Bidding Scenario Cards */
+        .scenario-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 16px;
+            margin-top: 14px;
+        }
+
+        .scenario-card {
+            background: var(--surface);
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 18px;
+            position: relative;
+            transition: all 0.2s ease;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            min-width: 0;
+        }
+
+        .scenario-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .scenario-card.primary-active {
+            border-color: var(--primary);
+            background-color: #FAFDFB;
+        }
+
+        .scenario-tag {
+            position: absolute;
+            top: 14px;
+            right: 14px;
+            font-size: 10px;
+            padding: 2px 8px;
+            border-radius: 20px;
+            font-weight: 600;
+        }
+
+        .scenario-tag.tag-conservative { background: #FEF3C7; color: #B45309; }
+        .scenario-tag.tag-moderate { background: #E0E7FF; color: #3730A3; }
+        .scenario-tag.tag-target { background: #D1FAE5; color: #065F46; }
+
+        .scenario-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--text-main);
+            padding-right: 65px;
+            margin-bottom: 2px;
+            word-break: break-all;
+        }
+
+        .scenario-price {
+            font-size: 24px;
+            font-weight: 800;
+            color: var(--primary);
+            margin-bottom: 12px;
+            letter-spacing: -0.5px;
+        }
+
+        .scenario-metrics-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-bottom: 14px;
+        }
+
+        .metric-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12px;
+            padding-bottom: 5px;
+            border-bottom: 1px dashed var(--border-color);
+        }
+
+        .metric-row:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+
+        .metric-label {
+            color: var(--text-muted);
+        }
+
+        .metric-val {
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .metric-highlight {
+            color: var(--accent);
+            font-weight: 700;
+        }
+
+        .scenario-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        /* Canvas Area */
+        .canvas-area {
+            width: 100%;
+            min-height: 220px;
+            background: #F3F4F6;
+            border: 2px dashed var(--border-color);
+            border-radius: var(--radius-md);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            cursor: pointer;
+            overflow: hidden;
+            position: relative;
+            transition: all 0.2s ease;
+        }
+
+        .canvas-area:hover {
+            border-color: var(--primary);
+            background: var(--primary-light);
+            color: var(--primary);
+        }
+
+        .canvas-area img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            border-radius: var(--radius-md);
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 8px 16px;
+            border-radius: var(--radius-sm);
+            font-size: 12px;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            white-space: nowrap;
+        }
+
+        .btn-primary {
+            background-color: var(--primary);
+            color: #FFFFFF;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--primary-hover);
+        }
+
+        .btn-outline {
+            background-color: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+        }
+
+        .btn-outline:hover {
+            background-color: var(--bg-main);
+        }
+
+        .btn-accent {
+            background-color: var(--secondary);
+            color: white;
+        }
+
+        .btn-accent:hover {
+            background-color: #1E3A60;
+        }
+
+        .btn-icon-btn {
+            background: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-muted);
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-icon-btn:hover {
+            background: var(--surface);
+            color: var(--text-main);
+        }
+
+        .btn-icon-btn.danger:hover {
+            background: var(--danger-light);
+            color: var(--danger);
+            border-color: var(--danger);
+        }
+
+        .safety-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .safety-badge.safe { background: #D1FAE5; color: #065F46; }
+        .safety-badge.warning { background: #FEF3C7; color: #92400E; }
+        .safety-badge.danger { background: #FEE2E2; color: #991B1B; }
+
+        .notes-textarea {
+            width: 100%;
+            height: 100px;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            font-size: 12px;
+            resize: vertical;
+            background: #FAFAFA;
+            box-sizing: border-box;
+        }
+
+        .notes-textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            background: #FFFFFF;
+        }
+    </style>
+</head>
+<body>
+
+    <header class="app-header">
+        <div class="brand">
+            <div class="brand-icon">🏡</div>
+            <div class="brand-text">
+                <h1>看房筆記 House Note</h1>
+                <p>多物件切換與即時出價試算 Dashboard</p>
+            </div>
+        </div>
+        <div class="header-actions">
+            <button class="btn btn-outline" onclick="resetDefaults()">🔄 重置範例</button>
+            <button class="btn btn-accent" onclick="exportJSON()">📥 匯出全建案 JSON</button>
+        </div>
+    </header>
+
+    <div class="kpi-row">
+        <div class="kpi-card">
+            <div class="kpi-info">
+                <label>個人總可調用資金</label>
+                <span class="kpi-val" id="kpiCapital">629 萬</span>
+            </div>
+            <div class="kpi-icon" style="background:#EBF2EC; color:#3A5A40;">💰</div>
+        </div>
+        <div class="kpi-card highlight">
+            <div class="kpi-info">
+                <label id="kpiLabelAsking">當前物件開價</label>
+                <span class="kpi-val" id="kpiAskingPrice">2,088 萬</span>
+            </div>
+            <div class="kpi-icon" style="background:#FEF3C7; color:#B45309;">🏷️</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-info">
+                <label id="kpiLabelNetArea">扣車位淨坪數</label>
+                <span class="kpi-val" id="kpiNetArea">36.21 坪</span>
+            </div>
+            <div class="kpi-icon" style="background:#EEF3FA; color:#2B4C7E;">📐</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-info">
+                <label id="kpiLabelTargetPMT">目標價預估月繳房貸</label>
+                <span class="kpi-val" id="kpiTargetPMT">60,433 元</span>
+            </div>
+            <div class="kpi-icon" style="background:#F3E8FF; color:#6B21A8;">📅</div>
+        </div>
+    </div>
+
+    <div class="dashboard-grid">
+        
+        <div class="property-sidebar-column">
+            
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">🏘️ 看房物件清單</div>
+                    <button class="btn btn-primary" style="padding: 3px 8px; font-size:11px;" onclick="addNewProperty()">+ 新增物件</button>
+                </div>
+                <p style="font-size: 11px; color: var(--text-muted); margin-bottom: 12px;">
+                    點擊切換物件，頂部指標與試算內容將同步即時更新：
+                </p>
+
+                <div class="property-list" id="propertyList">
+                    </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">💰 個人可調用資金組合</div>
+                    <button class="btn btn-outline" style="padding: 2px 8px; font-size:10px;" onclick="addCapitalItem()">+ 新增資金</button>
+                </div>
+                <div class="capital-list" id="capitalList">
+                    </div>
+                <div class="capital-total-box">
+                    <span>總可調用流動資金</span>
+                    <span id="totalCapitalVal">629 萬</span>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="property-spec-column">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">🏢 選取物件詳細參數</div>
+                    <button class="btn-icon-btn danger" onclick="deleteActiveProperty()">🗑️ 刪除此物件</button>
+                </div>
+                <div class="form-grid">
+                    <div class="form-group full-width">
+                        <label>建案名稱</label>
+                        <input type="text" id="houseName" class="form-control" value="四季會館" oninput="saveCurrentPropertyForm()">
+                    </div>
+                    <div class="form-group full-width">
+                        <label>建案地址</label>
+                        <input type="text" id="houseAddress" class="form-control" value="學成路278-2號19F" oninput="saveCurrentPropertyForm()">
+                    </div>
+                    <div class="form-group">
+                        <label>房屋總坪數 (坪)</label>
+                        <input type="number" id="totalArea" class="form-control" value="47.32" step="0.01" oninput="saveCurrentPropertyForm()">
+                    </div>
+                    <div class="form-group">
+                        <label>車位坪數 (坪)</label>
+                        <input type="number" id="parkingArea" class="form-control" value="11.11" step="0.01" oninput="saveCurrentPropertyForm()">
+                    </div>
+                    <div class="form-group">
+                        <label>扣車位淨坪 (坪)</label>
+                        <input type="number" id="netArea" class="form-control" value="36.21" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label>開價 (萬)</label>
+                        <input type="number" id="askingPrice" class="form-control" value="2088" oninput="saveCurrentPropertyForm()">
+                    </div>
+                    <div class="form-group">
+                        <label>車位預估價 (萬)</label>
+                        <input type="number" id="defaultParkingPrice" class="form-control" value="150" oninput="saveCurrentPropertyForm()">
+                    </div>
+                    <div class="form-group">
+                        <label>預設利率 (%)</label>
+                        <input type="number" id="interestRate" class="form-control" value="2.35" step="0.01" oninput="saveCurrentPropertyForm()">
+                    </div>
+                    <div class="form-group full-width">
+                        <label>貸款期數 (月/ 30年=360)</label>
+                        <input type="number" id="loanMonths" class="form-control" value="360" oninput="saveCurrentPropertyForm()">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="right-column">
+
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">📊 多情境出價與財務試算決策引擎</div>
+                        <p style="font-size:11px; color:var(--text-muted); margin-top:2px;">
+                            公式：扣車位單價 = (出價總價 - 車位總價) ÷ 淨坪數；每月房貸採 PMT 本息平均攤還。
+                        </p>
+                    </div>
+                    <button class="btn btn-primary" onclick="addNewScenario()">+ 新增出價情境</button>
+                </div>
+
+                <div class="scenario-grid" id="scenarioContainer">
+                    </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">📐 格局圖資與現場筆記</div>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+                    <div>
+                        <label style="font-size: 11px; font-weight:600; color:var(--text-muted); margin-bottom: 4px; display:block;">格局平面圖上傳預覽</label>
+                        <div class="canvas-area" id="canvasArea" onclick="document.getElementById('fileUpload').click()">
+                            <span style="font-size:28px;">🖼️</span>
+                            <span style="margin-top:6px; font-size:12px; font-weight:500;">點擊上傳格局圖檔</span>
+                            <input type="file" id="fileUpload" style="display:none;" accept="image/*" onchange="handleImageUpload(event)">
+                        </div>
+                    </div>
+                    
+                    <div style="display: flex; flex-direction: column; gap: 6px;">
+                        <label style="font-size: 11px; font-weight:600; color:var(--text-muted);">現場看房筆記 / 優缺點備忘</label>
+                        <textarea class="notes-textarea" id="propertyNotes" style="flex:1;" placeholder="記錄現場採光、公設比、通風狀況或看房心得..." oninput="saveCurrentPropertyForm()"></textarea>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <script>
+        // -------------------------------------------------------------
+        // State Management - Global Capital & Multi-Properties
+        // -------------------------------------------------------------
+        let capitalItems = [
+            { id: 1, name: '玉山銀行存款', value: 179 },
+            { id: 2, name: '郵局存款', value: 383 },
+            { id: 3, name: '股票/變現資產', value: 67 }
+        ];
+
+        let properties = [
+            {
+                id: 'p1',
+                name: '四季會館',
+                address: '學成路278-2號19F',
+                totalArea: 47.32,
+                parkingArea: 11.11,
+                askingPrice: 2088,
+                parkingPrice: 150,
+                interestRate: 2.35,
+                loanMonths: 360,
+                notes: '高樓層採光極佳、格局方正無暗房、近學區步步到位。',
+                imageData: null,
+                scenarios: [
+                    { id: 'sc1', title: '1st 提給房仲 (試探底價)', price: 1780, tagClass: 'tag-conservative', tagText: '保守出價' },
+                    { id: 'sc2', title: '第二次折衝價', price: 1850, tagClass: 'tag-moderate', tagText: '折衝出價' },
+                    { id: 'sc3', title: '理想成交目標價', price: 1950, tagClass: 'tag-target', tagText: '目標底牌' }
+                ]
+            },
+            {
+                id: 'p2',
+                name: '遠雄左岸',
+                address: '環河西路二段88號12F',
+                totalArea: 52.10,
+                parkingArea: 12.50,
+                askingPrice: 2480,
+                parkingPrice: 180,
+                interestRate: 2.35,
+                loanMonths: 360,
+                notes: '水岸第一排無遮蔽景觀，公設有游泳池與健身房。',
+                imageData: null,
+                scenarios: [
+                    { id: 'sc21', title: '低於開價 12% 試探', price: 2180, tagClass: 'tag-conservative', tagText: '保守出價' },
+                    { id: 'sc22', title: '屋主折衝目標價', price: 2320, tagClass: 'tag-target', tagText: '目標底牌' }
+                ]
+            },
+            {
+                id: 'p3',
+                name: '新板特區精品',
+                address: '縣民大道二段15號8F',
+                totalArea: 38.60,
+                parkingArea: 9.80,
+                askingPrice: 2850,
+                parkingPrice: 220,
+                interestRate: 2.35,
+                loanMonths: 360,
+                notes: '板橋車站三鐵共構，生活機能極強，公設比偏高約 35%。',
+                imageData: null,
+                scenarios: [
+                    { id: 'sc31', title: '首次試探出價', price: 2500, tagClass: 'tag-conservative', tagText: '保守出價' },
+                    { id: 'sc32', title: '理想成交底牌', price: 2680, tagClass: 'tag-target', tagText: '目標底牌' }
+                ]
+            }
+        ];
+
+        let activePropertyId = 'p1';
+
+        function getActiveProperty() {
+            return properties.find(p => p.id === activePropertyId) || properties[0];
+        }
+
+        // -------------------------------------------------------------
+        // Capital Management Functions
+        // -------------------------------------------------------------
+        function renderCapitalList() {
+            let container = document.getElementById('capitalList');
+            container.innerHTML = '';
+            let total = 0;
+
+            capitalItems.forEach(item => {
+                total += item.value;
+                let div = document.createElement('div');
+                div.className = 'capital-item';
+                div.innerHTML = `
+                    <span class="capital-item-name">${item.name}</span>
+                    <div class="capital-item-right">
+                        <span class="capital-item-val">${item.value} 萬</span>
+                        <button class="btn-icon-btn" title="編輯" onclick="editCapitalItem(${item.id})">✏️</button>
+                        <button class="btn-icon-btn danger" title="刪除" onclick="deleteCapitalItem(${item.id})">✕</button>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+
+            document.getElementById('totalCapitalVal').innerText = `${total.toLocaleString()} 萬`;
+            document.getElementById('kpiCapital').innerText = `${total.toLocaleString()} 萬`;
+
+            renderScenarios();
+        }
+
+        function addCapitalItem() {
+            let name = prompt('請輸入資金來源名稱（例：玉山定存、台股現值）：');
+            if (!name) return;
+
+            let valStr = prompt(`請輸入「${name}」的金額（萬元）：`, '100');
+            let val = parseFloat(valStr);
+
+            if (!isNaN(val) && val >= 0) {
+                capitalItems.push({ id: Date.now(), name: name.trim(), value: val });
+                renderCapitalList();
+            } else {
+                alert('請輸入有效的金額數字！');
+            }
+        }
+
+        function editCapitalItem(id) {
+            let item = capitalItems.find(i => i.id === id);
+            if (!item) return;
+
+            let newName = prompt('修改資金名稱：', item.name);
+            if (!newName) return;
+
+            let newValStr = prompt(`修改「${newName}」的金額（萬元）：`, item.value);
+            let newVal = parseFloat(newValStr);
+
+            if (!isNaN(newVal) && newVal >= 0) {
+                item.name = newName.trim();
+                item.value = newVal;
+                renderCapitalList();
+            } else {
+                alert('請輸入有效的金額數字！');
+            }
+        }
+
+        function deleteCapitalItem(id) {
+            if (confirm('確定要刪除這筆資金項目嗎？')) {
+                capitalItems = capitalItems.filter(item => item.id !== id);
+                renderCapitalList();
+            }
+        }
+
+        function getTotalCapital() {
+            return capitalItems.reduce((sum, item) => sum + item.value, 0);
+        }
+
+        // -------------------------------------------------------------
+        // Multi-Property Switcher Functions & Item Level Deletion
+        // -------------------------------------------------------------
+        function renderPropertyListUI() {
+            let container = document.getElementById('propertyList');
+            container.innerHTML = '';
+
+            properties.forEach(p => {
+                let div = document.createElement('div');
+                div.className = `property-item ${p.id === activePropertyId ? 'active' : ''}`;
+                div.onclick = () => selectProperty(p.id);
+
+                div.innerHTML = `
+                    <div class="property-item-info">
+                        <span class="property-item-name">${p.name || '未命名物件'}</span>
+                        <span class="property-item-addr">${p.address || '無地址資訊'}</span>
+                    </div>
+                    <div class="property-item-right">
+                        <span class="property-item-price">${p.askingPrice ? p.askingPrice.toLocaleString() + '萬' : '--'}</span>
+                        <button class="btn-del-prop" title="移除此物件" onclick="deletePropertyItem(event, '${p.id}')">✕</button>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function selectProperty(id) {
+            saveCurrentPropertyForm();
+            activePropertyId = id;
+            renderPropertyListUI();
+            loadActivePropertyToForm();
+            renderScenarios();
+        }
+
+        function addNewProperty() {
+            let name = prompt('請輸入新物件/建案名稱（例如：遠雄左岸、國天廈）：', '新看房物件');
+            if (!name) return;
+
+            let newProp = {
+                id: 'p_' + Date.now(),
+                name: name.trim(),
+                address: '請輸入地址',
+                totalArea: 45.0,
+                parkingArea: 10.0,
+                askingPrice: 2000,
+                parkingPrice: 150,
+                interestRate: 2.35,
+                loanMonths: 360,
+                notes: '',
+                imageData: null,
+                scenarios: [
+                    { id: 'sc_' + Date.now(), title: '初步試探價', price: 1750, tagClass: 'tag-conservative', tagText: '保守出價' },
+                    { id: 'sc_' + (Date.now()+1), title: '目標成交價', price: 1880, tagClass: 'tag-target', tagText: '目標底牌' }
+                ]
+            };
+
+            properties.push(newProp);
+            selectProperty(newProp.id);
+        }
+
+        // Direct Item-level Delete Function with Event StopPropagation
+        function deletePropertyItem(event, id) {
+            event.stopPropagation(); // Stop clicking property item select event
+
+            if (properties.length <= 1) {
+                alert('清單中至少需保留一個物件！');
+                return;
+            }
+
+            let targetProp = properties.find(p => p.id === id);
+            if (confirm(`確定要移除「${targetProp ? targetProp.name : '這個'}」物件嗎？`)) {
+                properties = properties.filter(p => p.id !== id);
+                
+                if (id === activePropertyId) {
+                    activePropertyId = properties[0].id;
+                }
+
+                renderPropertyListUI();
+                loadActivePropertyToForm();
+                renderScenarios();
+            }
+        }
+
+        function deleteActiveProperty() {
+            deletePropertyItem(new Event('click'), activePropertyId);
+        }
+
+        function loadActivePropertyToForm() {
+            let p = getActiveProperty();
+            document.getElementById('houseName').value = p.name || '';
+            document.getElementById('houseAddress').value = p.address || '';
+            document.getElementById('totalArea').value = p.totalArea || 0;
+            document.getElementById('parkingArea').value = p.parkingArea || 0;
+            document.getElementById('askingPrice').value = p.askingPrice || 0;
+            document.getElementById('defaultParkingPrice').value = p.parkingPrice || 0;
+            document.getElementById('interestRate').value = p.interestRate || 2.35;
+            document.getElementById('loanMonths').value = p.loanMonths || 360;
+            document.getElementById('propertyNotes').value = p.notes || '';
+
+            let canvasArea = document.getElementById('canvasArea');
+            if (p.imageData) {
+                canvasArea.innerHTML = `<img src="${p.imageData}" alt="格局圖">`;
+            } else {
+                canvasArea.innerHTML = `
+                    <span style="font-size:28px;">🖼️</span>
+                    <span style="margin-top:6px; font-size:12px; font-weight:500;">點擊上傳格局圖檔</span>
+                    <input type="file" id="fileUpload" style="display:none;" accept="image/*" onchange="handleImageUpload(event)">
+                `;
+            }
+        }
+
+        function saveCurrentPropertyForm() {
+            let p = getActiveProperty();
+            if (!p) return;
+
+            p.name = document.getElementById('houseName').value;
+            p.address = document.getElementById('houseAddress').value;
+            p.totalArea = parseFloat(document.getElementById('totalArea').value) || 0;
+            p.parkingArea = parseFloat(document.getElementById('parkingArea').value) || 0;
+            p.askingPrice = parseFloat(document.getElementById('askingPrice').value) || 0;
+            p.parkingPrice = parseFloat(document.getElementById('defaultParkingPrice').value) || 0;
+            p.interestRate = parseFloat(document.getElementById('interestRate').value) || 2.35;
+            p.loanMonths = parseFloat(document.getElementById('loanMonths').value) || 360;
+            p.notes = document.getElementById('propertyNotes').value;
+
+            renderPropertyListUI();
+            renderScenarios();
+        }
+
+        // -------------------------------------------------------------
+        // Loan & Financial PMT Calculations & KPI Live Updates
+        // -------------------------------------------------------------
+        function calculatePMT(rate, nper, pv) {
+            let r = rate / 100 / 12;
+            if (r === 0) return pv / nper;
+            return pv * (r * Math.pow(1 + r, nper)) / (Math.pow(1 + r, nper) - 1);
+        }
+
+        function renderScenarios() {
+            let p = getActiveProperty();
+
+            let totalArea = p.totalArea || 0;
+            let parkingArea = p.parkingArea || 0;
+            let netArea = totalArea - parkingArea;
+            document.getElementById('netArea').value = netArea > 0 ? netArea.toFixed(2) : 0;
+
+            let askingPrice = p.askingPrice || 0;
+            let parkingPrice = p.parkingPrice || 150;
+            let rate = p.interestRate || 2.35;
+            let months = p.loanMonths || 360;
+            let totalCapital = getTotalCapital();
+
+            // Live Update Top 4 KPI Cards based on Active Property
+            document.getElementById('kpiAskingPrice').innerText = `${askingPrice.toLocaleString()} 萬`;
+            document.getElementById('kpiNetArea').innerText = `${netArea > 0 ? netArea.toFixed(2) : 0} 坪`;
+            document.getElementById('kpiLabelAsking').innerText = `「${p.name || '物件'}」開價`;
+            document.getElementById('kpiLabelNetArea').innerText = `「${p.name || '物件'}」扣車位坪數`;
+
+            let container = document.getElementById('scenarioContainer');
+            container.innerHTML = '';
+
+            if (!p.scenarios || p.scenarios.length === 0) {
+                container.innerHTML = '<p style="font-size:12px; color:var(--text-muted);">尚無出價情境，請點擊右上角新增。</p>';
+                document.getElementById('kpiTargetPMT').innerText = '-- 元';
+                return;
+            }
+
+            p.scenarios.forEach((sc, index) => {
+                let unitPrice = netArea > 0 ? (sc.price - parkingPrice) / netArea : 0;
+                let loan = sc.price * 0.8;
+                let down = sc.price - loan;
+                let pmt = calculatePMT(rate, months, loan * 10000);
+                let safety = totalCapital - down;
+
+                let safetyClass = 'safe';
+                let safetyText = `餘額 ${safety.toFixed(0)} 萬 (充裕)`;
+
+                if (safety < 0) {
+                    safetyClass = 'danger';
+                    safetyText = `缺口 ${Math.abs(safety).toFixed(0)} 萬 (透支)`;
+                } else if (safety < 100) {
+                    safetyClass = 'warning';
+                    safetyText = `餘額 ${safety.toFixed(0)} 萬 (偏緊)`;
+                }
+
+                if (index === p.scenarios.length - 1) {
+                    document.getElementById('kpiTargetPMT').innerText = `${Math.round(pmt).toLocaleString()} 元`;
+                    document.getElementById('kpiLabelTargetPMT').innerText = `「${p.name}」目標價月繳房貸`;
+                }
+
+                let card = document.createElement('div');
+                card.className = `scenario-card ${index === p.scenarios.length - 1 ? 'primary-active' : ''}`;
+                card.innerHTML = `
+                    <span class="scenario-tag ${sc.tagClass || 'tag-moderate'}">${sc.tagText || '出價情境'}</span>
+                    <div>
+                        <div class="scenario-title">${sc.title}</div>
+                        <div class="scenario-price">${sc.price.toLocaleString()} 萬</div>
+                        
+                        <div class="scenario-metrics-list">
+                            <div class="metric-row">
+                                <span class="metric-label">扣車位單價</span>
+                                <span class="metric-val">${unitPrice.toFixed(2)} 萬/坪</span>
+                            </div>
+                            <div class="metric-row">
+                                <span class="metric-label">預估可貸金額 (8成)</span>
+                                <span class="metric-val">${loan.toFixed(0)} 萬</span>
+                            </div>
+                            <div class="metric-row">
+                                <span class="metric-label">自備頭期款</span>
+                                <span class="metric-highlight">${down.toFixed(0)} 萬</span>
+                            </div>
+                            <div class="metric-row">
+                                <span class="metric-label">每月房貸 (${(months/12).toFixed(0)}年)</span>
+                                <span class="metric-val">${Math.round(pmt).toLocaleString()} 元/月</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="scenario-footer">
+                        <span class="safety-badge ${safetyClass}">${safetyText}</span>
+                        <div style="display:flex; gap:4px;">
+                            <button class="btn-icon-btn" onclick="editScenario('${sc.id}')">✏️</button>
+                            <button class="btn-icon-btn danger" onclick="deleteScenario('${sc.id}')">🗑️</button>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function addNewScenario() {
+            let p = getActiveProperty();
+            let title = prompt(`請輸入「${p.name}」的新出價情境名稱：`, '新出價情境');
+            if (!title) return;
+
+            let priceStr = prompt(`請輸入出價總價（萬元）：`, '1900');
+            let price = parseFloat(priceStr);
+
+            if (!isNaN(price) && price > 0) {
+                p.scenarios.push({
+                    id: 'sc_' + Date.now(),
+                    title: title.trim(),
+                    price: price,
+                    tagClass: 'tag-moderate',
+                    tagText: '自訂情境'
+                });
+                renderScenarios();
+            } else {
+                alert('請輸入有效的數字金額！');
+            }
+        }
+
+        function editScenario(id) {
+            let p = getActiveProperty();
+            let sc = p.scenarios.find(item => item.id === id);
+            if (!sc) return;
+
+            let newTitle = prompt('修改出價情境名稱：', sc.title);
+            if (!newTitle) return;
+
+            let newPriceStr = prompt('修改出價總價（萬元）：', sc.price);
+            let newPrice = parseFloat(newPriceStr);
+
+            if (!isNaN(newPrice) && newPrice > 0) {
+                sc.title = newTitle.trim();
+                sc.price = newPrice;
+                renderScenarios();
+            } else {
+                alert('請輸入有效的數字金額！');
+            }
+        }
+
+        function deleteScenario(id) {
+            let p = getActiveProperty();
+            if (p.scenarios.length <= 1) {
+                alert('每個物件至少需要保留一組出價情境進行試算！');
+                return;
+            }
+
+            if (confirm('確定要刪除這組出價情境嗎？')) {
+                p.scenarios = p.scenarios.filter(item => item.id !== id);
+                renderScenarios();
+            }
+        }
+
+        // -------------------------------------------------------------
+        // Image Upload Preview Function
+        // -------------------------------------------------------------
+        function handleImageUpload(event) {
+            let file = event.target.files[0];
+            if (file) {
+                let reader = new FileReader();
+                reader.onload = function(e) {
+                    let p = getActiveProperty();
+                    p.imageData = e.target.result;
+                    let canvasArea = document.getElementById('canvasArea');
+                    canvasArea.innerHTML = `<img src="${p.imageData}" alt="格局圖">`;
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function resetDefaults() {
+            if (confirm('確定要重置所有物件與資料為預設範例嗎？')) {
+                location.reload();
+            }
+        }
+
+        function exportJSON() {
+            saveCurrentPropertyForm();
+            let data = {
+                capitalItems: capitalItems,
+                properties: properties,
+                exportDate: new Date().toISOString()
+            };
+            let blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            let a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `house_notes_all_properties_export.json`;
+            a.click();
+        }
+
+        // Initialize App on load
+        window.onload = function() {
+            renderCapitalList();
+            renderPropertyListUI();
+            loadActivePropertyToForm();
+            renderScenarios();
+        };
+    </script>
+</body>
+</html>
