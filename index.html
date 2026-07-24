@@ -99,6 +99,18 @@
             gap: 12px;
         }
 
+        .save-tag {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--primary);
+            background: var(--primary-light);
+            padding: 4px 10px;
+            border-radius: 20px;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
         /* Top 4 KPI Quick Summary Banner */
         .kpi-row {
             display: grid;
@@ -183,7 +195,7 @@
             flex-shrink: 0;
         }
 
-        /* Main Grid Layout - Fixed width constraint & layout overflow bug */
+        /* Main Grid Layout */
         .dashboard-grid {
             display: grid;
             grid-template-columns: 320px 380px minmax(0, 1fr);
@@ -334,7 +346,7 @@
             background: var(--danger-light);
         }
 
-        /* Form Controls - STRICT GRID WIDTH FIX */
+        /* Form Controls */
         .form-grid {
             display: grid;
             grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -686,7 +698,8 @@
             </div>
         </div>
         <div class="header-actions">
-            <button class="btn btn-outline" onclick="resetDefaults()">🔄 重置範例</button>
+            <span class="save-tag" id="autoSaveIndicator">💾 已本機自動儲存</span>
+            <button class="btn btn-outline" onclick="resetDefaults()">🔄 重置預設</button>
             <button class="btn btn-accent" onclick="exportJSON()">📥 匯出全建案 JSON</button>
         </div>
     </header>
@@ -732,7 +745,7 @@
                     <button class="btn btn-primary" style="padding: 3px 8px; font-size:11px;" onclick="addNewProperty()">+ 新增物件</button>
                 </div>
                 <p style="font-size: 11px; color: var(--text-muted); margin-bottom: 12px;">
-                    點擊切換物件，頂部指標與試算內容將同步即時更新：
+                    點擊切換物件，修改內容將<b>自動即時寫入本機儲存</b>：
                 </p>
 
                 <div class="property-list" id="propertyList">
@@ -846,15 +859,19 @@
 
     <script>
         // -------------------------------------------------------------
-        // State Management - Global Capital & Multi-Properties
+        // State Management with LocalStorage Persistence
         // -------------------------------------------------------------
-        let capitalItems = [
+        const STORAGE_KEY_CAPITAL = 'HOUSE_NOTE_CAPITAL_ITEMS_V1';
+        const STORAGE_KEY_PROPERTIES = 'HOUSE_NOTE_PROPERTIES_V1';
+        const STORAGE_KEY_ACTIVE_ID = 'HOUSE_NOTE_ACTIVE_ID_V1';
+
+        const defaultCapitalItems = [
             { id: 1, name: '玉山銀行存款', value: 179 },
             { id: 2, name: '郵局存款', value: 383 },
             { id: 3, name: '股票/變現資產', value: 67 }
         ];
 
-        let properties = [
+        const defaultProperties = [
             {
                 id: 'p1',
                 name: '四季會館',
@@ -889,27 +906,50 @@
                     { id: 'sc21', title: '低於開價 12% 試探', price: 2180, tagClass: 'tag-conservative', tagText: '保守出價' },
                     { id: 'sc22', title: '屋主折衝目標價', price: 2320, tagClass: 'tag-target', tagText: '目標底牌' }
                 ]
-            },
-            {
-                id: 'p3',
-                name: '新板特區精品',
-                address: '縣民大道二段15號8F',
-                totalArea: 38.60,
-                parkingArea: 9.80,
-                askingPrice: 2850,
-                parkingPrice: 220,
-                interestRate: 2.35,
-                loanMonths: 360,
-                notes: '板橋車站三鐵共構，生活機能極強，公設比偏高約 35%。',
-                imageData: null,
-                scenarios: [
-                    { id: 'sc31', title: '首次試探出價', price: 2500, tagClass: 'tag-conservative', tagText: '保守出價' },
-                    { id: 'sc32', title: '理想成交底牌', price: 2680, tagClass: 'tag-target', tagText: '目標底牌' }
-                ]
             }
         ];
 
+        let capitalItems = [];
+        let properties = [];
         let activePropertyId = 'p1';
+
+        // -------------------------------------------------------------
+        // Persistence (localStorage Save / Load)
+        // -------------------------------------------------------------
+        function saveToLocalStorage() {
+            try {
+                localStorage.setItem(STORAGE_KEY_CAPITAL, JSON.stringify(capitalItems));
+                localStorage.setItem(STORAGE_KEY_PROPERTIES, JSON.stringify(properties));
+                localStorage.setItem(STORAGE_KEY_ACTIVE_ID, activePropertyId);
+                
+                let tag = document.getElementById('autoSaveIndicator');
+                if (tag) {
+                    tag.innerText = '💾 已寫入本機儲存';
+                    setTimeout(() => { tag.innerText = '💾 已本機自動儲存'; }, 1000);
+                }
+            } catch (e) {
+                console.error("LocalStorage save failed:", e);
+            }
+        }
+
+        function loadFromLocalStorage() {
+            try {
+                let savedCapital = localStorage.getItem(STORAGE_KEY_CAPITAL);
+                let savedProperties = localStorage.getItem(STORAGE_KEY_PROPERTIES);
+                let savedActiveId = localStorage.getItem(STORAGE_KEY_ACTIVE_ID);
+
+                capitalItems = savedCapital ? JSON.parse(savedCapital) : defaultCapitalItems;
+                properties = savedProperties ? JSON.parse(savedProperties) : defaultProperties;
+                activePropertyId = savedActiveId && properties.some(p => p.id === savedActiveId) 
+                                   ? savedActiveId 
+                                   : (properties[0] ? properties[0].id : 'p1');
+            } catch (e) {
+                console.error("LocalStorage load failed, fallback to defaults.", e);
+                capitalItems = defaultCapitalItems;
+                properties = defaultProperties;
+                activePropertyId = 'p1';
+            }
+        }
 
         function getActiveProperty() {
             return properties.find(p => p.id === activePropertyId) || properties[0];
@@ -942,6 +982,7 @@
             document.getElementById('kpiCapital').innerText = `${total.toLocaleString()} 萬`;
 
             renderScenarios();
+            saveToLocalStorage();
         }
 
         function addCapitalItem() {
@@ -990,7 +1031,7 @@
         }
 
         // -------------------------------------------------------------
-        // Multi-Property Switcher Functions & Item Level Deletion
+        // Multi-Property Switcher Functions & Deletion
         // -------------------------------------------------------------
         function renderPropertyListUI() {
             let container = document.getElementById('propertyList');
@@ -1021,6 +1062,7 @@
             renderPropertyListUI();
             loadActivePropertyToForm();
             renderScenarios();
+            saveToLocalStorage();
         }
 
         function addNewProperty() {
@@ -1049,9 +1091,8 @@
             selectProperty(newProp.id);
         }
 
-        // Direct Item-level Delete Function with Event StopPropagation
         function deletePropertyItem(event, id) {
-            event.stopPropagation(); // Stop clicking property item select event
+            event.stopPropagation();
 
             if (properties.length <= 1) {
                 alert('清單中至少需保留一個物件！');
@@ -1069,6 +1110,7 @@
                 renderPropertyListUI();
                 loadActivePropertyToForm();
                 renderScenarios();
+                saveToLocalStorage();
             }
         }
 
@@ -1078,6 +1120,8 @@
 
         function loadActivePropertyToForm() {
             let p = getActiveProperty();
+            if (!p) return;
+
             document.getElementById('houseName').value = p.name || '';
             document.getElementById('houseAddress').value = p.address || '';
             document.getElementById('totalArea').value = p.totalArea || 0;
@@ -1116,6 +1160,7 @@
 
             renderPropertyListUI();
             renderScenarios();
+            saveToLocalStorage();
         }
 
         // -------------------------------------------------------------
@@ -1129,6 +1174,7 @@
 
         function renderScenarios() {
             let p = getActiveProperty();
+            if (!p) return;
 
             let totalArea = p.totalArea || 0;
             let parkingArea = p.parkingArea || 0;
@@ -1141,7 +1187,6 @@
             let months = p.loanMonths || 360;
             let totalCapital = getTotalCapital();
 
-            // Live Update Top 4 KPI Cards based on Active Property
             document.getElementById('kpiAskingPrice').innerText = `${askingPrice.toLocaleString()} 萬`;
             document.getElementById('kpiNetArea').innerText = `${netArea > 0 ? netArea.toFixed(2) : 0} 坪`;
             document.getElementById('kpiLabelAsking').innerText = `「${p.name || '物件'}」開價`;
@@ -1236,6 +1281,7 @@
                     tagText: '自訂情境'
                 });
                 renderScenarios();
+                saveToLocalStorage();
             } else {
                 alert('請輸入有效的數字金額！');
             }
@@ -1256,6 +1302,7 @@
                 sc.title = newTitle.trim();
                 sc.price = newPrice;
                 renderScenarios();
+                saveToLocalStorage();
             } else {
                 alert('請輸入有效的數字金額！');
             }
@@ -1271,6 +1318,7 @@
             if (confirm('確定要刪除這組出價情境嗎？')) {
                 p.scenarios = p.scenarios.filter(item => item.id !== id);
                 renderScenarios();
+                saveToLocalStorage();
             }
         }
 
@@ -1286,13 +1334,17 @@
                     p.imageData = e.target.result;
                     let canvasArea = document.getElementById('canvasArea');
                     canvasArea.innerHTML = `<img src="${p.imageData}" alt="格局圖">`;
+                    saveToLocalStorage();
                 };
                 reader.readAsDataURL(file);
             }
         }
 
         function resetDefaults() {
-            if (confirm('確定要重置所有物件與資料為預設範例嗎？')) {
+            if (confirm('確定要清除本機快取並重置為預設範例資料嗎？')) {
+                localStorage.removeItem(STORAGE_KEY_CAPITAL);
+                localStorage.removeItem(STORAGE_KEY_PROPERTIES);
+                localStorage.removeItem(STORAGE_KEY_ACTIVE_ID);
                 location.reload();
             }
         }
@@ -1313,6 +1365,7 @@
 
         // Initialize App on load
         window.onload = function() {
+            loadFromLocalStorage();
             renderCapitalList();
             renderPropertyListUI();
             loadActivePropertyToForm();
